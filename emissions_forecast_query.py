@@ -73,8 +73,7 @@ def get_forecast_data(from_time, num_hours, ba):
     forecast_data.set_index('Datetime', inplace=True)
     # Selecting the data for the specified time range
     forecast_data = forecast_data[(forecast_data.index >= pd.Timestamp(start_time_str)) & (forecast_data.index <= pd.Timestamp(end_time_str))]
-    # forecast_data['time_unix'] = forecast_data.index.view('int64')/100000000
-    co2_optimization_dict = {"dt":1/12, "num_hours":round((to_time - from_time).total_seconds()/3600), "start_hour":start_hour, "p_co2":0, "co2_grid":forecast_data['value'].tolist()}
+    co2_optimization_dict = {"dt":1/12, "num_hours":round((to_time - from_time).total_seconds()/3600), "start_hour":start_hour, "p_co2":0, "co2_grid":list(zip((list(map(int,forecast_data.index.view('int64')/100000000))), forecast_data['value'].values.tolist()))}
     co2_optimization_json = json.dumps(co2_optimization_dict, indent=4)
     return co2_optimization_json
 
@@ -82,4 +81,6 @@ def get_forecast_data(from_time, num_hours, ba):
 from_time = datetime(2022,11,1,0,0,0)
 num_hours = 24 # maximum 35 hours
 co2_optimization_json = get_forecast_data(from_time, num_hours, ba)
-print(co2_optimization_json)
+#write json to file
+with open('co2_optimization.json', 'w') as f:
+    json.dump(json.loads(co2_optimization_json), f)

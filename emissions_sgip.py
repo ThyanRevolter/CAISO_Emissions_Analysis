@@ -121,36 +121,64 @@ def get_moer_date(from_time, to_time):
     return real_time_moer_df
 
 def get_forecast_date(from_time, to_time):
+    # forecast_moer = forecast(token, 'SGIP_CAISO_PGE')
     forecast_moer = forecast(token, 'SGIP_CAISO_PGE', from_time, to_time)
     forecast_moer_df = pd.DataFrame(forecast_moer)
+    print("from time", from_time)
+    print("generated_at")
+    print((forecast_moer_df['generated_at'].values.tolist()[0]))
     forecast_moer_df = pd.DataFrame(forecast_moer_df['forecast'].values.tolist()[0]).drop(['version', 'ba'], axis=1)
-    # print(pd.DataFrame(forecast_moer_df['forecast'].values.tolist()[0]))
+    # print(forecast_moer_df)
     return forecast_moer_df
 
 
-# from_time, to_time = '2022-11-04T00:00:00-0000', '2022-11-05T00:00:00-0000'
-# moer_info = get_moer_date(from_time, to_time)
+
+
+def output_forecast_receding_time_horizon(start_time, end_time, delta):
+    start_time_str = start_time.strftime("%Y-%m-%dT%H:%M:%S-0000")
+    end_time_str = end_time.strftime("%Y-%m-%dT%H:%M:%S-0000")
+    forecast_info = get_forecast_date(start_time_str, end_time_str)
+    forecast_info = get_forecast_date(start_time_str, end_time_str).set_index('point_time')
+    moer_info = get_moer_date(start_time_str, end_time_str).set_index('point_time')
+    combines_data = moer_info.join(forecast_info, how='outer', lsuffix='_moer', rsuffix='_forecast_0')
+    i = 0
+    while start_time <= end_time:
+        i += 1
+        from_time = (start_time+ delta).strftime("%Y-%m-%dT%H:%M:%S-0000")
+        if from_time == end_time_str:
+            break
+        temp_forecast_info = get_forecast_date(from_time, end_time_str).set_index('point_time')
+        combines_data = combines_data.join(temp_forecast_info,how='outer', rsuffix='_forecast_'+str(i))
+        start_time += delta
+    combines_data.to_excel("receding_analysis/forecast_receding_at_"+start_time.strftime("%Y%m%dT%H%M%S")+".xlsx")
+
+
 # forecast_info_receding time horizon
 
-start_time = datetime(2022,11,1,0,4,0)
-end_time =  datetime(2022,11,1,3,4,0)
+# forecast_info_receding time horizon
+start_time = datetime(2022,4,30,0,0,0)
+end_time =  start_time + timedelta(days=1)
 delta = timedelta(hours=1)
-start_time_str = start_time.strftime("%Y-%m-%dT%H:%M:%S-0000")
-end_time_str = end_time.strftime("%Y-%m-%dT%H:%M:%S-0000")
-forecast_info = get_forecast_date(start_time_str, end_time_str).set_index('point_time')
-moer_info = get_moer_date(start_time_str, end_time_str).set_index('point_time')
-combines_data = moer_info.join(forecast_info, how='outer', lsuffix='_moer', rsuffix='_forecast_0')
-i = 0
-while start_time <= end_time:
-    i += 1
-    from_time = (start_time+ delta).strftime("%Y-%m-%dT%H:%M:%S-0000")
-    print("from_time", from_time, "end_time_str", end_time_str)
-    if from_time == end_time_str:
-        break
-    temp_forecast_info = get_forecast_date(from_time, end_time_str).set_index('point_time')
-    # print("temp_forecast_info", temp_forecast_info.head)
-    combines_data = combines_data.join(temp_forecast_info,how='outer', rsuffix='_forecast_'+str(i))
-    start_time += delta
+output_forecast_receding_time_horizon(start_time, end_time, delta)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 # combined_data = moer_info.set_index('point_time').join(forecast_info.set_index('point_time'), lsuffix='_moer', rsuffix='_forecast')
 # start_time = datetime(2022,11,5,0,0,0)
@@ -173,4 +201,3 @@ while start_time <= end_time:
 
 # combined_data.to_excel("combined_data_hour_analysis.xlsx")
 # moer_info.to_excel("moer_info_one.xlsx")
-combines_data.to_excel("combined_receding_horizon_time.xlsx")
